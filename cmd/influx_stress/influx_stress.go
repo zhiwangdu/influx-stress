@@ -9,7 +9,7 @@ import (
 	"runtime/pprof"
 	"strings"
 
-	v2 "github.com/influxdata/influx-stress/stress/v2"
+	v2 "github.com/influxdata/influx-stress/internal/app"
 )
 
 var (
@@ -47,7 +47,7 @@ func main() {
 
 	file := *config
 	if file == "" {
-		file = "stress/v2/iql/file.iql"
+		file = "examples/iql/file.iql"
 	}
 	v2.RunStress(file)
 }

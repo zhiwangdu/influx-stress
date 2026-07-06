@@ -14,8 +14,8 @@ go build -o /tmp/influx_stress ./cmd/influx_stress
 
 ```bash
 /tmp/influx_stress
-/tmp/influx_stress -config stress/v2/iql/default.iql
-/tmp/influx_stress -v2 -config stress/v2/iql/default.iql
+/tmp/influx_stress -config examples/iql/default.iql
+/tmp/influx_stress -v2 -config examples/iql/default.iql
 ```
 
 The `-v2` flag is accepted for compatibility but no longer required. Legacy v1 TOML configs and v1-only flags are rejected.

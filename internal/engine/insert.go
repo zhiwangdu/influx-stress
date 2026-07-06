@@ -1,0 +1,197 @@
+package engine
+
+import (
+	"log"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	influxclient "github.com/influxdata/influx-stress/internal/influx"
+	"github.com/influxdata/influx-stress/internal/report"
+	"github.com/influxdata/influx-stress/internal/workload"
+)
+
+// InsertStatement is a Statement Implementation that creates points to be written to the target InfluxDB instance
+type InsertStatement struct {
+	TestID      string
+	StatementID string
+
+	// Statement Name
+	Name string
+
+	// Template string for points. Filled by the output of stringers
+	TemplateString string
+
+	// TagCount is used to find the number of series in the dataset
+	TagCount int
+
+	// The Tracer prevents InsertStatement.Run() from returning early
+	Tracer *influxclient.Tracer
+
+	// Timestamp is #points to write and percision
+	Timestamp *workload.Timestamp
+
+	// Templates turn into stringers
+	Templates workload.Templates
+	renderer  *workload.PointRenderer
+
+	// Number of series in this insert Statement
+	series int
+
+	// Returns the proper time for the next point
+	time func() int64
+
+	// Concurrency utiliities
+	sync.WaitGroup
+	sync.Mutex
+
+	// Timer for runtime and pps calculation
+	runtime time.Duration
+}
+
+func (i *InsertStatement) tags() map[string]string {
+	tags := map[string]string{
+		"number_fields":       i.numFields(),
+		"number_series":       fmtInt(i.series),
+		"number_points_write": fmtInt(i.Timestamp.Count),
+	}
+	return tags
+}
+
+// SetID statisfies the Statement Interface
+func (i *InsertStatement) SetID(s string) {
+	i.StatementID = s
+}
+
+// SetVars sets up the environment for InsertStatement to call it's Run function
+func (i *InsertStatement) SetVars(s *influxclient.StressTest) chan<- string {
+	// Set the #series at 1 to start
+	i.series = 1
+
+	// Num series is the product of the cardinality of the tags
+	for _, tmpl := range i.Templates[0:i.TagCount] {
+		i.series *= tmpl.NumSeries()
+	}
+
+	// Set the time function, keeps track of 'time' of the points being created
+	i.time = i.Timestamp.Time(s.StartDate, i.series, s.Precision)
+
+	// Compile the point renderer after the series and time functions are known.
+	i.renderer = workload.NewPointRenderer(i.TemplateString, i.Templates, i.series, i.time)
+
+	// Set a commune on the StressTest
+	s.Lock()
+	comCh := s.SetCommune(i.Name)
+	s.Unlock()
+
+	// Set the tracer
+	i.Tracer = influxclient.NewTracer(i.tags())
+
+	return comCh
+}
+
+// Run statisfies the Statement Interface
+func (i *InsertStatement) Run(s *influxclient.StressTest) {
+
+	// Set variables on the InsertStatement and make the comCh
+	comCh := i.SetVars(s)
+
+	// TODO: Refactor to eleminate the ctr
+	// Start the counter
+	ctr := 0
+
+	// Create the first batch buffer
+	buf := workload.NewBatchBuffer(i.renderer, s.BatchSize)
+
+	runtime := time.Now()
+
+	for k := 0; k < i.Timestamp.Count; k++ {
+
+		// Increment the counter. ctr == k + 1?
+		ctr++
+
+		// Make the point from the compiled renderer.
+		pointStart := len(buf)
+		buf = i.renderer.AppendPoint(buf)
+		pointEnd := len(buf)
+
+		// Add a newline char to seperate the points
+		buf = append(buf, '\n')
+		pointBuf := buf
+
+		// If len(batch) == batchSize then send it
+		if ctr%s.BatchSize == 0 && ctr != 0 {
+			// Trimming the trailing newline character
+			b := buf[:len(buf)-1]
+
+			// Create the package
+			p := influxclient.NewPackage(influxclient.Write, b, i.StatementID, i.Tracer)
+
+			// Use Tracer to wait for all operations to finish
+			i.Tracer.Add(1)
+
+			// Send the package
+			s.SendPackage(p)
+
+			// Reset with a new backing array; Package.Body may be retried later.
+			buf = workload.NewBatchBuffer(i.renderer, s.BatchSize)
+		}
+
+		// TODO: Racy
+		// Has to do with InsertStatement and QueryStatement communication
+		if len(comCh) < cap(comCh) {
+			point := string(pointBuf[pointStart:pointEnd])
+			select {
+			case comCh <- point:
+				break
+			default:
+				break
+			}
+		}
+
+	}
+
+	// If There are additional points remaining in the buffer send them before exiting
+	if len(buf) != 0 {
+		// Trimming the trailing newline character
+		b := buf[:len(buf)-1]
+
+		// Create the package
+		p := influxclient.NewPackage(influxclient.Write, b, i.StatementID, i.Tracer)
+
+		// Use Tracer to wait for all operations to finish
+		i.Tracer.Add(1)
+
+		// Send the package
+		s.SendPackage(p)
+	}
+
+	// Wait for all tracers to decrement
+	i.Tracer.Wait()
+
+	// Stop the timer
+	i.runtime = time.Since(runtime)
+}
+
+// Report statisfies the Statement Interface
+func (i *InsertStatement) Report(s *influxclient.StressTest) string {
+	// Pull data via StressTest client
+	allData := s.GetStatementResults(i.StatementID, "write")
+
+	if allData == nil || allData[0].Series == nil {
+		log.Fatalf("No data returned for write report\n  Statement Name: %v\n  Statement ID: %v\n", i.Name, i.StatementID)
+	}
+
+	return report.Insert(i.Name, allData[0].Series[0].Columns, allData[0].Series[0].Values, i.Timestamp.Count, i.runtime)
+}
+
+func (i *InsertStatement) numFields() string {
+	pt := strings.Split(i.TemplateString, " ")
+	fields := strings.Split(pt[1], ",")
+	return fmtInt(len(fields))
+}
+
+func fmtInt(i int) string {
+	return strconv.FormatInt(int64(i), 10)
+}

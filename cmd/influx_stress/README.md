@@ -5,7 +5,7 @@ If you run into any issues with this tool please mention @jackzampolin when you 
 ## Ways to run
 
 ### `influx_stress`
-This runs the v2 stress test with the default IQL file at `stress/v2/iql/file.iql`.
+This runs the v2 stress test with the default IQL file at `examples/iql/file.iql`.
 
 ### `influx_stress -config someConfig.iql`
 This runs the v2 stress test with a valid IQL file located at `someConfig.iql`.
@@ -18,7 +18,7 @@ This is still supported for compatibility. The `-v2` flag is now optional becaus
 ### `-config` string
 The relative path to the v2 IQL stress test file.
 
-`default` = `stress/v2/iql/file.iql`
+`default` = `examples/iql/file.iql`
 
 ### `-cpuprofile` filename
 Writes the result of Go's cpu profile to filename
