@@ -1,6 +1,7 @@
 package statement
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -97,8 +98,193 @@ func TestFunctionAppenderCardinality(t *testing.T) {
 func TestRandZeroPanicBehavior(t *testing.T) {
 	mustPanic(t, "randInt(0)", func() { randInt(0)() })
 	mustPanic(t, "randFloat(0)", func() { randFloat(0)() })
+	mustPanic(t, "randf(0)", func() { randDecimalFloatAppender(0)(nil) })
+	mustPanic(t, "zipfInt(0)", func() { zipfIntAppender(0)(nil) })
+	mustPanic(t, "zipfFloat(0)", func() { zipfFloatAppender(0)(nil) })
 	mustNotPanic(t, "incInt(0)", func() { incInt(0)() })
 	mustNotPanic(t, "incFloat(0)", func() { incFloat(0)() })
+	mustNotPanic(t, "normalFloat(0)", func() { normalFloatAppender(0)(nil) })
+	mustNotPanic(t, "sinFloat(0)", func() { sinFloatAppender(0)(nil) })
+	mustNotPanic(t, "walkFloat(0)", func() { walkFloatAppender(0)(nil) })
+	mustNotPanic(t, "hashStr(0)", func() { hashStrAppender(0)(nil) })
+}
+
+func TestIntBuiltins(t *testing.T) {
+	constant := constIntAppender(42)
+	if got := string(constant(nil)); got != "42i" {
+		t.Fatalf("const int: expected 42i, got %q", got)
+	}
+	if got := string(constant(nil)); got != "42i" {
+		t.Fatalf("const int second call: expected 42i, got %q", got)
+	}
+
+	dec := decIntAppender(1)
+	for _, want := range []string{"1i", "0i", "-1i"} {
+		if got := string(dec(nil)); got != want {
+			t.Fatalf("dec int: expected %q, got %q", want, got)
+		}
+	}
+
+	zipf := zipfIntAppender(10)
+	got := string(zipf(nil))
+	if !strings.HasSuffix(got, "i") {
+		t.Fatalf("zipf int should have i suffix: %q", got)
+	}
+	v := parseInt(got[:len(got)-1])
+	if v < 0 || v >= 10 {
+		t.Fatalf("zipf int out of range: %q", got)
+	}
+}
+
+func TestFloatBuiltins(t *testing.T) {
+	constant := constFloatAppender(42)
+	if got := string(constant(nil)); got != "42" {
+		t.Fatalf("const float: expected 42, got %q", got)
+	}
+
+	dec := decFloatAppender(1)
+	for _, want := range []string{"1", "0", "-1"} {
+		if got := string(dec(nil)); got != want {
+			t.Fatalf("dec float: expected %q, got %q", want, got)
+		}
+	}
+
+	randf := randDecimalFloatAppender(10)
+	got := string(randf(nil))
+	assertDecimalFloatToken(t, got)
+	v := parseFloat64(t, got)
+	if v < 0 || v >= 10 {
+		t.Fatalf("randf out of range: %q", got)
+	}
+
+	for name, fn := range map[string]ValueAppender{
+		"normal": normalFloatAppender(0),
+		"sin":    sinFloatAppender(0),
+		"walk":   walkFloatAppender(0),
+	} {
+		if got := string(fn(nil)); got != "0.0" {
+			t.Fatalf("%s(0): expected 0.0, got %q", name, got)
+		}
+	}
+
+	sin := sinFloatAppender(10)
+	if got := string(sin(nil)); got != "0.0" {
+		t.Fatalf("sin first value: expected 0.0, got %q", got)
+	}
+	got = string(sin(nil))
+	assertDecimalFloatToken(t, got)
+	if got == "0.0" {
+		t.Fatal("sin second value should advance")
+	}
+
+	walk := walkFloatAppender(10)
+	assertDecimalFloatToken(t, string(walk(nil)))
+
+	zipf := zipfFloatAppender(10)
+	got = string(zipf(nil))
+	assertIntegerFloatToken(t, got)
+	v = parseFloat64(t, got)
+	if v < 0 || v >= 10 {
+		t.Fatalf("zipf float out of range: %q", got)
+	}
+}
+
+func TestStrBuiltins(t *testing.T) {
+	inc := incStrAppender(7)
+	for _, want := range []string{"7", "8", "9"} {
+		if got := string(inc(nil)); got != want {
+			t.Fatalf("str inc: expected %q, got %q", want, got)
+		}
+	}
+
+	id := idStrAppender(4)
+	for _, want := range []string{"id-0000", "id-0001"} {
+		if got := string(id(nil)); got != want {
+			t.Fatalf("str id: expected %q, got %q", want, got)
+		}
+	}
+	if got := string(idStrAppender(0)(nil)); got != "id-0" {
+		t.Fatalf("str id width 0: expected id-0, got %q", got)
+	}
+
+	hash := hashStrAppender(7)
+	got := string(hash(nil))
+	if len(got) != 6 {
+		t.Fatalf("hash(7) length: expected 6, got %d (%q)", len(got), got)
+	}
+	assertSafeHexString(t, got)
+	next := string(hash(nil))
+	if next == got {
+		t.Fatalf("hash should advance by counter: repeated %q", got)
+	}
+
+	longHash := string(hashStrAppender(80)(nil))
+	if len(longHash) != 80 {
+		t.Fatalf("hash(80) length: expected 80, got %d", len(longHash))
+	}
+	assertSafeHexString(t, longHash)
+
+	if got := string(hashStrAppender(0)(nil)); got != "" {
+		t.Fatalf("hash(0): expected empty string, got %q", got)
+	}
+
+	for _, got := range []string{string(incStrAppender(0)(nil)), string(idStrAppender(2)(nil)), longHash} {
+		if strings.ContainsAny(got, ", =\"") {
+			t.Fatalf("string builtin emitted line-protocol metacharacter: %q", got)
+		}
+	}
+}
+
+func TestStatefulBuiltinsWrappedByCount(t *testing.T) {
+	tests := []struct {
+		name     string
+		fn       *Function
+		cycled   []string
+		repeated []string
+	}{
+		{
+			name:     "int dec",
+			fn:       &Function{Type: "int", Fn: "dec", Argument: 3, Count: 2},
+			cycled:   []string{"3i", "2i", "3i"},
+			repeated: []string{"3i", "3i", "2i"},
+		},
+		{
+			name:     "float dec",
+			fn:       &Function{Type: "float", Fn: "dec", Argument: 3, Count: 2},
+			cycled:   []string{"3", "2", "3"},
+			repeated: []string{"3", "3", "2"},
+		},
+		{
+			name:     "str inc",
+			fn:       &Function{Type: "str", Fn: "inc", Argument: 3, Count: 2},
+			cycled:   []string{"3", "4", "3"},
+			repeated: []string{"3", "3", "4"},
+		},
+		{
+			name:     "str id",
+			fn:       &Function{Type: "str", Fn: "id", Argument: 2, Count: 2},
+			cycled:   []string{"id-00", "id-01", "id-00"},
+			repeated: []string{"id-00", "id-00", "id-01"},
+		},
+	}
+
+	for _, tt := range tests {
+		cycled := tt.fn.NewAppender(2)
+		for _, want := range tt.cycled {
+			if got := string(cycled(nil)); got != want {
+				t.Fatalf("%s cycle: expected %q, got %q", tt.name, want, got)
+			}
+		}
+
+		repeatedFn := *tt.fn
+		repeatedFn.Count = 0
+		repeated := repeatedFn.NewAppender(2)
+		for _, want := range tt.repeated {
+			if got := string(repeated(nil)); got != want {
+				t.Fatalf("%s nTimes: expected %q, got %q", tt.name, want, got)
+			}
+		}
+	}
 }
 
 func TestStringersEval(t *testing.T) {
@@ -210,6 +396,43 @@ func assertIntegerFloatToken(t *testing.T, s string) {
 			t.Fatalf("float token should contain only digits: %q", s)
 		}
 	}
+}
+
+func assertDecimalFloatToken(t *testing.T, s string) {
+	t.Helper()
+	if s == "" {
+		t.Fatal("decimal float token is empty")
+	}
+	if !strings.Contains(s, ".") {
+		t.Fatalf("decimal float token should contain '.': %q", s)
+	}
+	if strings.Contains(s, "i") {
+		t.Fatalf("decimal float token should not contain 'i': %q", s)
+	}
+	if _, err := strconv.ParseFloat(s, 64); err != nil {
+		t.Fatalf("decimal float token should parse as float: %q: %v", s, err)
+	}
+}
+
+func assertSafeHexString(t *testing.T, s string) {
+	t.Helper()
+	for _, ch := range s {
+		if !strings.ContainsRune("0123456789abcdef", ch) {
+			t.Fatalf("expected hex string, got %q", s)
+		}
+	}
+	if strings.ContainsAny(s, ", =\"") {
+		t.Fatalf("hex string emitted line-protocol metacharacter: %q", s)
+	}
+}
+
+func parseFloat64(t *testing.T, s string) float64 {
+	t.Helper()
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		t.Fatalf("failed parsing float %q: %v", s, err)
+	}
+	return v
 }
 
 func mustPanic(t *testing.T, name string, fn func()) {

@@ -2,16 +2,16 @@
 
 ## Project Structure & Module Organization
 
-This repository is a standalone Go module for the InfluxDB `influx_stress` tool. The CLI entry point is in `cmd/influx_stress/`, with example TOML configuration in `cmd/influx_stress/examples/`. Core v1 stress-test logic, default configuration, and package tests live in `stress/`. The newer v2 implementation is under `stress/v2/`, including stress client code in `stress/v2/stress_client/`, statement execution in `stress/v2/statement/`, StressQL parsing in `stress/v2/stressql/`, and sample `.iql` files in `stress/v2/iql/`. Tests are colocated with source files as `*_test.go`.
+This repository is a standalone Go module for the InfluxDB `influx_stress` tool. The CLI entry point is in `cmd/influx_stress/`. The only supported runner is the v2 IQL implementation under `stress/v2/`, including stress client code in `stress/v2/stress_client/`, statement execution in `stress/v2/statement/`, StressQL parsing in `stress/v2/stressql/`, and sample `.iql` files in `stress/v2/iql/`. Tests are colocated with source files as `*_test.go`.
 
 ## Build, Test, and Development Commands
 
 - `go test ./...`: runs all package tests.
 - `go build ./...`: verifies all packages compile.
 - `go build -o /tmp/influx_stress ./cmd/influx_stress`: builds the CLI binary.
-- `/tmp/influx_stress`: runs the default stress test configuration at `stress/stress.toml`.
-- `/tmp/influx_stress -config path/to/config.toml`: runs a v1 TOML configuration.
-- `/tmp/influx_stress -v2 -config stress/v2/iql/default.iql`: runs a v2 IQL configuration.
+- `/tmp/influx_stress`: runs the default v2 IQL file at `stress/v2/iql/file.iql`.
+- `/tmp/influx_stress -config stress/v2/iql/default.iql`: runs a specific v2 IQL configuration.
+- `/tmp/influx_stress -v2 -config stress/v2/iql/default.iql`: supported compatibility form; `-v2` is optional.
 
 Use a local InfluxDB instance at `http://localhost:8086` when exercising the default runtime paths.
 

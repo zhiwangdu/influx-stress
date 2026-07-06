@@ -4,68 +4,78 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
+	"path/filepath"
 	"runtime/pprof"
+	"strings"
 
-	"github.com/influxdata/influx-stress/stress"
 	v2 "github.com/influxdata/influx-stress/stress/v2"
 )
 
 var (
-	useV2      = flag.Bool("v2", false, "Use version 2 of stress tool")
-	config     = flag.String("config", "", "The stress test file")
+	useV2      = flag.Bool("v2", true, "Use version 2 of stress tool. Deprecated: v2 is now the only supported engine")
+	config     = flag.String("config", "", "The v2 IQL stress test file")
 	cpuprofile = flag.String("cpuprofile", "", "Write the cpu profile to `filename`")
-	db         = flag.String("db", "", "target database within test system for write and query load")
 )
 
+var unsupportedV1Flags = map[string]struct{}{
+	"addr":             {},
+	"database":         {},
+	"db":               {},
+	"retention-policy": {},
+	"tags":             {},
+}
+
 func main() {
-	o := stress.NewOutputConfig()
+	registerUnsupportedV1Flags()
 	flag.Parse()
+
+	if err := validateFlags(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
 
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			fmt.Println(err)
-			return
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
 
-	if *useV2 {
-		if *config != "" {
-			v2.RunStress(*config)
-		} else {
-			v2.RunStress("stress/v2/iql/file.iql")
-		}
-	} else {
-
-		c, err := stress.NewConfig(*config)
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
-
-		if *db != "" {
-			c.Provision.Basic.Database = *db
-			c.Write.InfluxClients.Basic.Database = *db
-			c.Read.QueryClients.Basic.Database = *db
-		}
-
-		w := stress.NewWriter(c.Write.PointGenerators.Basic, &c.Write.InfluxClients.Basic)
-		r := stress.NewQuerier(&c.Read.QueryGenerators.Basic, &c.Read.QueryClients.Basic)
-		s := stress.NewStressTest(&c.Provision.Basic, w, r)
-
-		bw := stress.NewBroadcastChannel()
-		bw.Register(c.Write.InfluxClients.Basic.BasicWriteHandler)
-		bw.Register(o.HTTPHandler("write"))
-
-		br := stress.NewBroadcastChannel()
-		br.Register(c.Read.QueryClients.Basic.BasicReadHandler)
-		br.Register(o.HTTPHandler("read"))
-
-		s.Start(bw.Handle, br.Handle)
-
+	file := *config
+	if file == "" {
+		file = "stress/v2/iql/file.iql"
 	}
+	v2.RunStress(file)
+}
+
+func registerUnsupportedV1Flags() {
+	for name := range unsupportedV1Flags {
+		flag.String(name, "", "unsupported legacy v1 flag")
+	}
+}
+
+func validateFlags() error {
+	if !*useV2 {
+		return fmt.Errorf("v1 TOML mode has been removed; omit -v2 or pass -v2=true to run v2 IQL")
+	}
+
+	var legacy []string
+	flag.Visit(func(f *flag.Flag) {
+		if _, ok := unsupportedV1Flags[f.Name]; ok {
+			legacy = append(legacy, "-"+f.Name)
+		}
+	})
+	if len(legacy) != 0 {
+		return fmt.Errorf("unsupported v1 flag(s): %s; use v2 IQL SET statements instead", strings.Join(legacy, ", "))
+	}
+
+	if *config != "" && strings.EqualFold(filepath.Ext(*config), ".toml") {
+		return fmt.Errorf("v1 TOML config %q is no longer supported; pass a v2 .iql config", *config)
+	}
+
+	return nil
 }

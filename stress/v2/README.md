@@ -68,7 +68,7 @@ You can write points like this:
 ```
 INSERT mockCpu
 cpu,
-host=server-[int inc(0) 10000],location=[string rand(8) 1000]
+host=server-[int inc(0) 10000],location=[str rand(8) 1000]
 value=[float rand(1000) 0]
 100000 10s
 
@@ -86,7 +86,15 @@ value=[float inc(0) 0]
 100000 10s
 ```
 
-Each template contains 3 parts: a datatype (`str`, `float`, or `int`) a function which describes how the value changes between points: `inc(0)` is increasing and `rand(n)` is a random number between `0` and `n`. The last number is the number of unique values in the tag or field. `0` is unbounded. To make a tag
+Each template contains 3 parts: a datatype (`str`, `float`, or `int`), a function with one non-negative integer argument, and the number of unique generated values to cache and cycle. A final count of `0` means values advance after each full series cycle.
+
+Supported functions:
+
+- `int`: `inc(n)` starts at `n` and increments, `dec(n)` starts at `n` and decrements, `const(n)` repeats `n`, `rand(n)` is uniform in `[0,n)`, and `zipf(n)` is a skewed distribution over `[0,n)`.
+- `float`: `inc(n)`, `dec(n)`, `const(n)`, `rand(n)`, and `zipf(n)` emit integer-looking float field values. `randf(n)` emits decimal values in `[0,n)`, `normal(n)` emits normally distributed decimal noise with scale `n`, `sin(n)` emits a decimal sine wave with amplitude `n`, and `walk(n)` emits a decimal random walk with step magnitude `n`.
+- `str`: `rand(n)` emits line-safe random hex with length `2*floor(n/2)`, `inc(n)` emits increasing decimal strings, `id(n)` emits `id-` plus a zero-padded counter of width `n`, and `hash(n)` emits deterministic hex with length `2*floor(n/2)`.
+
+Functions with an upper bound (`rand`, `randf`, `zipf`) require `n > 0`, except `str rand(0)` which emits an empty string.
 
 To run multiple insert statements at once:
 ```

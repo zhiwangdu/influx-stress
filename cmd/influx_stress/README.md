@@ -5,39 +5,29 @@ If you run into any issues with this tool please mention @jackzampolin when you 
 ## Ways to run
 
 ### `influx_stress`
-This runs a basic stress test with the default config at `stress/stress.toml`.
+This runs the v2 stress test with the default IQL file at `stress/v2/iql/file.iql`.
 
-### `influx_stress -config someConfig.toml`
-This runs the stress test with a valid configuration file located at `someConfig.tom`
+### `influx_stress -config someConfig.iql`
+This runs the v2 stress test with a valid IQL file located at `someConfig.iql`.
 
 ### `influx_stress -v2 -config someConfig.iql`
-This runs the stress test with a valid `v2` configuration file. For more information about the `v2` stress test see `stress/v2/README.md`.
+This is still supported for compatibility. The `-v2` flag is now optional because v2 is the only supported runner.
 
 ## Flags
 
-If flags are defined they overwrite the config from any file passed in.
-
-### `-addr` string
-IP address and port of database where response times will persist (e.g., localhost:8086)
-
-`default` = "http://localhost:8086"
-
 ### `-config` string
-The relative path to the stress test configuration file.
+The relative path to the v2 IQL stress test file.
 
-`default` = `stress/stress.toml`
+`default` = `stress/v2/iql/file.iql`
 
 ### `-cpuprofile` filename
 Writes the result of Go's cpu profile to filename
 
 `default` = no profiling
 
-### `-database` string
-Name of database on `-addr` that `influx_stress` will persist write and query response times
+### `-v2`
+Compatibility no-op. v2 is always used.
 
-`default` = "stress"
+## Unsupported Legacy Flags
 
-### `-tags` value
-A comma separated list of tags to add to write and query response times.
-
-`default` = ""
+The v1 TOML runner has been removed. Flags such as `-db`, `-addr`, `-database`, `-retention-policy`, and `-tags` now return an error. Use v2 `SET` statements in IQL files instead.
