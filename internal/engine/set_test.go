@@ -42,10 +42,10 @@ func testSetRunUtl(t *testing.T, property string, value string) {
 	go func() {
 		for d := range directiveCh {
 			if i.Var != d.Property {
-				t.Errorf("wrong property sent to stressClient\n  expected: %v\n got: %v\n", i.Var, d.Property)
+				t.Errorf("wrong property sent to client\n  expected: %v\n got: %v\n", i.Var, d.Property)
 			}
 			if i.Value != d.Value {
-				t.Errorf("wrong value sent to stressClient\n  expected: %v\n  got: %v\n", i.Value, d.Value)
+				t.Errorf("wrong value sent to client\n  expected: %v\n  got: %v\n", i.Value, d.Value)
 			}
 			d.Tracer.Done()
 		}

@@ -1,7 +1,6 @@
-package influxclient
+package influx
 
-// Directive is a struct to enable communication between SetStatements and the stressClient backend
-// Directives change state for the stress test
+// Directive enables SET statements to change backend client state.
 type Directive struct {
 	Property string
 	Value    string

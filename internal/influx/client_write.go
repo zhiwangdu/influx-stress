@@ -1,4 +1,4 @@
-package influxclient
+package influx
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 // ###############################################
 
 // Packages up Package from channel in goroutine
-func (sc *stressClient) spinOffWritePackage(p Package, serv int) {
+func (sc *client) spinOffWritePackage(p Package, serv int) {
 	sc.Add(1)
 	sc.wc.Increment()
 	go func() {
@@ -25,7 +25,7 @@ func (sc *stressClient) spinOffWritePackage(p Package, serv int) {
 }
 
 // Implements backoff and retry logic for 500 responses
-func (sc *stressClient) retry(p Package, backoff time.Duration, serv int) {
+func (sc *client) retry(p Package, backoff time.Duration, serv int) {
 
 	// Set Backoff Interval to 500ms
 	backoffInterval := time.Duration(500 * time.Millisecond)
@@ -72,7 +72,7 @@ func (sc *stressClient) retry(p Package, backoff time.Duration, serv int) {
 }
 
 // Prepares to send the POST request
-func (sc *stressClient) prepareWrite(points []byte, serv int) (*http.Response, time.Duration, error) {
+func (sc *client) prepareWrite(points []byte, serv int) (*http.Response, time.Duration, error) {
 
 	// Construct address string
 	var writeTemplate string

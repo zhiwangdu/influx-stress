@@ -1,4 +1,4 @@
-package influxclient
+package influx
 
 import (
 	"sync"

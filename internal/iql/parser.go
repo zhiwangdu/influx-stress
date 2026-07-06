@@ -3,12 +3,13 @@ package iql
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"strings"
 
-	statement "github.com/influxdata/influx-stress/internal/engine"
+	"github.com/influxdata/influx-stress/internal/engine"
 	parse "github.com/influxdata/influx-stress/internal/iql/parse"
 	"github.com/influxdata/influxql"
 )
@@ -119,8 +120,8 @@ func (s *Scanner) scanStatements() (tok Token, lit string) {
 }
 
 // ParseStatements takes a configFile and returns a slice of Statements
-func ParseStatements(file string) ([]statement.Statement, error) {
-	seq := []statement.Statement{}
+func ParseStatements(file string) ([]engine.Statement, error) {
+	seq := []engine.Statement{}
 
 	f, err := os.Open(file)
 	check(err)
@@ -136,13 +137,17 @@ func ParseStatements(file string) ([]statement.Statement, error) {
 		_, err := influxql.ParseStatement(l)
 		if err == nil {
 
-			seq = append(seq, &statement.InfluxqlStatement{Query: l, StatementID: parse.RandStr(10)})
+			seq = append(seq, &engine.InfluxqlStatement{Query: l, StatementID: parse.RandStr(10)})
 		} else if t == BREAK {
 			continue
 		} else {
 			f := strings.NewReader(l)
 			p := parse.NewParser(f)
-			s, err := p.Parse()
+			parsed, err := p.Parse()
+			if err != nil {
+				return nil, err
+			}
+			s, err := buildStatement(parsed)
 			if err != nil {
 				return nil, err
 			}
@@ -155,4 +160,52 @@ func ParseStatements(file string) ([]statement.Statement, error) {
 
 	return seq, nil
 
+}
+
+func buildStatement(stmt parse.Statement) (engine.Statement, error) {
+	switch s := stmt.(type) {
+	case *parse.QueryStatement:
+		return &engine.QueryStatement{
+			StatementID:    s.StatementID,
+			Name:           s.Name,
+			TemplateString: s.TemplateString,
+			Args:           s.Args,
+			Count:          s.Count,
+		}, nil
+	case *parse.InsertStatement:
+		return &engine.InsertStatement{
+			StatementID:    s.StatementID,
+			Name:           s.Name,
+			TemplateString: s.TemplateString,
+			TagCount:       s.TagCount,
+			Timestamp:      s.Timestamp,
+			Templates:      s.Templates,
+		}, nil
+	case *parse.ExecStatement:
+		return &engine.ExecStatement{
+			StatementID: s.StatementID,
+			Script:      s.Script,
+		}, nil
+	case *parse.SetStatement:
+		return &engine.SetStatement{
+			StatementID: s.StatementID,
+			Var:         s.Var,
+			Value:       s.Value,
+		}, nil
+	case *parse.WaitStatement:
+		return &engine.WaitStatement{
+			StatementID: s.StatementID,
+		}, nil
+	case *parse.GoStatement:
+		body, err := buildStatement(s.Statement)
+		if err != nil {
+			return nil, err
+		}
+		return &engine.GoStatement{
+			Statement:   body,
+			StatementID: s.StatementID,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unsupported IQL statement type %T", stmt)
+	}
 }

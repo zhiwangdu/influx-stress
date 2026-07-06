@@ -1,4 +1,4 @@
-package influxclient
+package influx
 
 import (
 	"log"
@@ -8,11 +8,11 @@ import (
 	influx "github.com/influxdata/influxdb1-client/v2"
 )
 
-// reporting.go contains functions to emit tags and points from various parts of stressClient
-// These points are then written to the ("_%v", sf.TestName) database
+// reporting.go contains helpers that emit tags and points from backend client state.
+// These points are written to the ("_%v", sf.TestName) database.
 
-// These are the tags that stressClient adds to any response points
-func (sc *stressClient) tags(statementID string) map[string]string {
+// tags returns tags that the backend client adds to response points.
+func (sc *client) tags(statementID string) map[string]string {
 	tags := map[string]string{
 		"number_targets": fmtInt(len(sc.addresses)),
 		"precision":      sc.precision,
@@ -26,7 +26,7 @@ func (sc *stressClient) tags(statementID string) map[string]string {
 	return tags
 }
 
-// These are the tags that the StressTest adds to any response points
+// tags returns tags that the StressTest adds to response points.
 func (st *StressTest) tags() map[string]string {
 	tags := map[string]string{
 		"precision":  st.Precision,
@@ -36,7 +36,7 @@ func (st *StressTest) tags() map[string]string {
 }
 
 // This function makes a *client.Point for reporting on writes
-func (sc *stressClient) writePoint(retries int, statementID string, statusCode int, responseTime time.Duration, addedTags map[string]string, writeBytes int) *influx.Point {
+func (sc *client) writePoint(retries int, statementID string, statusCode int, responseTime time.Duration, addedTags map[string]string, writeBytes int) *influx.Point {
 
 	tags := sumTags(sc.tags(statementID), addedTags)
 
@@ -56,7 +56,7 @@ func (sc *stressClient) writePoint(retries int, statementID string, statusCode i
 }
 
 // This function makes a *client.Point for reporting on queries
-func (sc *stressClient) queryPoint(statementID string, body []byte, statusCode int, responseTime time.Duration, addedTags map[string]string) *influx.Point {
+func (sc *client) queryPoint(statementID string, body []byte, statusCode int, responseTime time.Duration, addedTags map[string]string) *influx.Point {
 
 	tags := sumTags(sc.tags(statementID), addedTags)
 

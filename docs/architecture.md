@@ -4,9 +4,10 @@ The tool is organized around an IQL script runner. The command parses a file int
 
 ## Packages
 
-- `cmd/influx_stress`: CLI flags, compatibility checks, and handoff to the app runner.
+- `cmd/influx_stress`: process entrypoint, CPU profiling setup, and handoff to the app runner.
+- `internal/cli`: CLI flag parsing, default config selection, v2 compatibility handling, and v1 argument rejection.
 - `internal/app`: top-level orchestration for parsing, execution, result flush, and report printing.
-- `internal/iql`: IQL file splitting and statement parsing. The `parse` subpackage contains the scanner/parser for individual statements.
+- `internal/iql`: IQL file splitting and conversion from parsed IQL AST nodes into runtime statements. The `parse` subpackage contains the scanner, parser, and AST types for individual statements.
 - `internal/engine`: runtime statements such as `SET`, `GO`, `WAIT`, `INSERT`, `QUERY`, `EXEC`, and raw InfluxQL.
 - `internal/workload`: INSERT workload generation: templates, built-in functions, timestamp generation, and point rendering.
 - `internal/influx`: runtime state, InfluxDB HTTP query/write client, directives, packages, tracing, and result collection.
@@ -15,8 +16,8 @@ The tool is organized around an IQL script runner. The command parses a file int
 
 ## Flow
 
-1. `cmd/influx_stress` validates CLI flags and calls `app.RunStress`.
-2. `internal/app` calls `iql.ParseStatements` to turn the IQL file into `engine.Statement` values.
+1. `cmd/influx_stress` asks `internal/cli` to validate flags, then calls `app.RunStress`.
+2. `internal/app` calls `iql.ParseStatements` to split the IQL file, parse each block into AST nodes, and convert those nodes into `engine.Statement` values.
 3. `engine.Statement.Run` sends write/query packages or directives through `internal/influx`.
 4. The Influx client performs HTTP requests, records response metadata, and decrements tracers.
 5. After execution, each statement asks `internal/report` to format its results.

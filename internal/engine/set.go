@@ -27,7 +27,7 @@ func (i *SetStatement) Run(s *influxclient.StressTest) {
 	i.Tracer = influxclient.NewTracer(make(map[string]string))
 	d := influxclient.NewDirective(strings.ToLower(i.Var), strings.ToLower(i.Value), i.Tracer)
 	switch d.Property {
-	// Needs to be set on both StressTest and stressClient
+	// Needs to be set on both StressTest and client
 	// Set the write percison for points generated
 	case "precision":
 		s.Precision = d.Value
@@ -45,7 +45,7 @@ func (i *SetStatement) Run(s *influxclient.StressTest) {
 		s.Lock()
 		s.BatchSize = parseInt(d.Value)
 		s.Unlock()
-	// All other variables live on stressClient
+	// All other variables live on client
 	default:
 		i.Tracer.Add(1)
 		s.SendDirective(d)

@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	statement "github.com/influxdata/influx-stress/internal/engine"
 	"github.com/influxdata/influx-stress/internal/workload"
 )
 
@@ -22,7 +21,7 @@ func TestParser_ParseStatement(t *testing.T) {
 	var tests = []struct {
 		skip bool
 		s    string
-		stmt statement.Statement
+		stmt Statement
 		err  string
 	}{
 
@@ -30,12 +29,12 @@ func TestParser_ParseStatement(t *testing.T) {
 
 		{
 			s:    "QUERY basicCount\nSELECT count(%f) FROM cpu\nDO 100",
-			stmt: &statement.QueryStatement{Name: "basicCount", TemplateString: "SELECT count(%v) FROM cpu", Args: []string{"%f"}, Count: 100},
+			stmt: &QueryStatement{Name: "basicCount", TemplateString: "SELECT count(%v) FROM cpu", Args: []string{"%f"}, Count: 100},
 		},
 
 		{
 			s:    "QUERY basicCount\nSELECT count(%f) FROM %m\nDO 100",
-			stmt: &statement.QueryStatement{Name: "basicCount", TemplateString: "SELECT count(%v) FROM %v", Args: []string{"%f", "%m"}, Count: 100},
+			stmt: &QueryStatement{Name: "basicCount", TemplateString: "SELECT count(%v) FROM %v", Args: []string{"%f", "%m"}, Count: 100},
 		},
 
 		{
@@ -48,7 +47,7 @@ func TestParser_ParseStatement(t *testing.T) {
 
 		{
 			s: "INSERT mockCpu\ncpu,\nhost=[us-west|us-east|eu-north],server_id=[str rand(7) 1000]\nbusy=[int rand(1000) 100],free=[float rand(10) 0]\n100000 10s",
-			stmt: &statement.InsertStatement{
+			stmt: &InsertStatement{
 				Name:           "mockCpu",
 				TemplateString: "cpu,host=%v,server_id=%v busy=%v,free=%v %v",
 				TagCount:       2,
@@ -75,7 +74,7 @@ func TestParser_ParseStatement(t *testing.T) {
 
 		{
 			s: "INSERT mockCpu\ncpu,host=[us-west|us-east|eu-north],server_id=[str rand(7) 1000]\nbusy=[int rand(1000) 100],free=[float rand(10) 0]\n100000 10s",
-			stmt: &statement.InsertStatement{
+			stmt: &InsertStatement{
 				Name:           "mockCpu",
 				TemplateString: "cpu,host=%v,server_id=%v busy=%v,free=%v %v",
 				TagCount:       2,
@@ -102,7 +101,7 @@ func TestParser_ParseStatement(t *testing.T) {
 
 		{
 			s: "INSERT mockCpu\n[str rand(1000) 10],\nhost=[us-west|us-east|eu-north],server_id=[str rand(7) 1000],other=x\nbusy=[int rand(1000) 100],free=[float rand(10) 0]\n100000 10s",
-			stmt: &statement.InsertStatement{
+			stmt: &InsertStatement{
 				Name:           "mockCpu",
 				TemplateString: "%v,host=%v,server_id=%v,other=x busy=%v,free=%v %v",
 				TagCount:       3,
@@ -140,25 +139,25 @@ func TestParser_ParseStatement(t *testing.T) {
 
 		{
 			s:    `EXEC other_script`,
-			stmt: &statement.ExecStatement{Script: "other_script"},
+			stmt: &ExecStatement{Script: "other_script"},
 		},
 
 		{
 			skip: true, // Implement
 			s:    `EXEC other_script.sh`,
-			stmt: &statement.ExecStatement{Script: "other_script.sh"},
+			stmt: &ExecStatement{Script: "other_script.sh"},
 		},
 
 		{
 			skip: true, // Implement
 			s:    `EXEC ../other_script.sh`,
-			stmt: &statement.ExecStatement{Script: "../other_script.sh"},
+			stmt: &ExecStatement{Script: "../other_script.sh"},
 		},
 
 		{
 			skip: true, // Implement
 			s:    `EXEC /path/to/some/other_script.sh`,
-			stmt: &statement.ExecStatement{Script: "/path/to/some/other_script.sh"},
+			stmt: &ExecStatement{Script: "/path/to/some/other_script.sh"},
 		},
 
 		// GO
@@ -166,8 +165,8 @@ func TestParser_ParseStatement(t *testing.T) {
 		{
 			skip: true,
 			s:    "GO INSERT mockCpu\ncpu,\nhost=[us-west|us-east|eu-north],server_id=[str rand(7) 1000]\nbusy=[int rand(1000) 100],free=[float rand(10) 0]\n100000 10s",
-			stmt: &statement.GoStatement{
-				Statement: &statement.InsertStatement{
+			stmt: &GoStatement{
+				Statement: &InsertStatement{
 					Name:           "mockCpu",
 					TemplateString: "cpu,host=%v,server_id=%v busy=%v,free=%v %v",
 					Templates: []*workload.Template{
@@ -195,16 +194,16 @@ func TestParser_ParseStatement(t *testing.T) {
 		{
 			skip: true,
 			s:    "GO QUERY basicCount\nSELECT count(free) FROM cpu\nDO 100",
-			stmt: &statement.GoStatement{
-				Statement: &statement.QueryStatement{Name: "basicCount", TemplateString: "SELECT count(free) FROM cpu", Count: 100},
+			stmt: &GoStatement{
+				Statement: &QueryStatement{Name: "basicCount", TemplateString: "SELECT count(free) FROM cpu", Count: 100},
 			},
 		},
 
 		{
 			skip: true,
 			s:    `GO EXEC other_script`,
-			stmt: &statement.GoStatement{
-				Statement: &statement.ExecStatement{Script: "other_script"},
+			stmt: &GoStatement{
+				Statement: &ExecStatement{Script: "other_script"},
 			},
 		},
 
@@ -212,14 +211,14 @@ func TestParser_ParseStatement(t *testing.T) {
 
 		{
 			s:    `SET database [stress]`,
-			stmt: &statement.SetStatement{Var: "database", Value: "stress"},
+			stmt: &SetStatement{Var: "database", Value: "stress"},
 		},
 
 		// WAIT
 
 		{
 			s:    `Wait`,
-			stmt: &statement.WaitStatement{},
+			stmt: &WaitStatement{},
 		},
 	}
 

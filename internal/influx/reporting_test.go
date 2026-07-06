@@ -1,12 +1,12 @@
-package influxclient
+package influx
 
 import (
 	"testing"
 	"time"
 )
 
-func TestNewStressClientTags(t *testing.T) {
-	pe, _, _ := newTestStressClient("localhost:8086")
+func TestNewClientTags(t *testing.T) {
+	pe, _, _ := newTestClient("localhost:8086")
 	tags := pe.tags("foo_id")
 	expected := fmtInt(len(pe.addresses))
 	got := tags["number_targets"]
@@ -46,7 +46,7 @@ func TestNewStressTestTags(t *testing.T) {
 }
 
 func TestWritePoint(t *testing.T) {
-	pe, _, _ := newTestStressClient("localhost:8086")
+	pe, _, _ := newTestClient("localhost:8086")
 	statementID := "foo_id"
 	responseCode := 200
 	responseTime := time.Duration(10 * time.Millisecond)
@@ -73,7 +73,7 @@ func TestWritePoint(t *testing.T) {
 }
 
 func TestQueryPoint(t *testing.T) {
-	pe, _, _ := newTestStressClient("localhost:8086")
+	pe, _, _ := newTestClient("localhost:8086")
 	statementID := "foo_id"
 	responseCode := 200
 	body := []byte{12}

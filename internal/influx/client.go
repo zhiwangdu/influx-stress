@@ -1,4 +1,4 @@
-package influxclient
+package influx
 
 import (
 	"strings"
@@ -14,9 +14,9 @@ const (
 	Query
 )
 
-func startStressClient(packageCh <-chan Package, directiveCh <-chan Directive, responseCh chan<- Response, testID string) {
+func startClient(packageCh <-chan Package, directiveCh <-chan Directive, responseCh chan<- Response, testID string) {
 
-	c := &stressClient{
+	c := &client{
 		testID: testID,
 
 		addresses: []string{"localhost:8086"},
@@ -43,7 +43,7 @@ func startStressClient(packageCh <-chan Package, directiveCh <-chan Directive, r
 	go c.directiveListen()
 }
 
-type stressClient struct {
+type client struct {
 	testID string
 
 	// State for the Stress Test
@@ -77,11 +77,11 @@ type stressClient struct {
 	rc *ConcurrencyLimiter
 }
 
-// NewTestStressClient returns a blank stressClient for testing
-func newTestStressClient(url string) (*stressClient, chan Directive, chan Package) {
+// newTestClient returns a blank runtime client for testing.
+func newTestClient(url string) (*client, chan Directive, chan Package) {
 	pkgChan := make(chan Package)
 	dirChan := make(chan Directive)
-	pe := &stressClient{
+	pe := &client{
 		testID:        "foo_id",
 		addresses:     []string{url},
 		precision:     "s",
@@ -102,8 +102,8 @@ func newTestStressClient(url string) (*stressClient, chan Directive, chan Packag
 	return pe, dirChan, pkgChan
 }
 
-// stressClient starts listening for Packages on the main channel
-func (sc *stressClient) listen() {
+// listen starts listening for Packages on the main channel.
+func (sc *client) listen() {
 	defer sc.Wait()
 	sc.wc = NewConcurrencyLimiter(sc.wconc)
 	sc.rc = NewConcurrencyLimiter(sc.qconc)
@@ -126,7 +126,7 @@ func (sc *stressClient) listen() {
 }
 
 // Set handles all SET requests for test state
-func (sc *stressClient) directiveListen() {
+func (sc *client) directiveListen() {
 	for d := range sc.directiveChan {
 		sc.Lock()
 		switch d.Property {

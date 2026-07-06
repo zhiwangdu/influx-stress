@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This repository is a standalone Go module for the InfluxDB `influx_stress` tool. The CLI entry point is in `cmd/influx_stress/`. The supported runner lives under `internal/`, including the app entrypoint in `internal/app/`, runtime statements in `internal/engine/`, the InfluxDB backend in `internal/influx/`, IQL parsing in `internal/iql/`, and sample `.iql` files in `examples/iql/`. Tests are colocated with source files as `*_test.go`.
+This repository is a standalone Go module for the InfluxDB `influx_stress` tool. The process entrypoint is in `cmd/influx_stress/`. The supported runner lives under `internal/`, including CLI parsing in `internal/cli/`, app orchestration in `internal/app/`, runtime statements in `internal/engine/`, the InfluxDB backend in `internal/influx/`, IQL parsing and AST conversion in `internal/iql/`, and sample `.iql` files in `examples/iql/`. Tests are colocated with source files as `*_test.go`.
 
 ## Build, Test, and Development Commands
 
@@ -25,7 +25,7 @@ Add or update colocated `*_test.go` files for parser, statement, client, and con
 
 ## Commit & Pull Request Guidelines
 
-This checkout does not include Git history, so use concise imperative commit messages such as `Add query parser test` or `Fix stress client response handling`. Pull requests should include a short problem statement, a summary of code changes, test results, and any manual InfluxDB validation steps. Link related issues when available and include screenshots only for changes to visual assets such as `docs/influx_stress_v2.png`.
+Use concise imperative commit messages such as `Add query parser test` or `Fix client response handling`. Pull requests should include a short problem statement, a summary of code changes, test results, and any manual InfluxDB validation steps. Link related issues when available and include screenshots only for changes to visual assets such as `docs/influx_stress_v2.png`.
 
 ## Configuration & Safety Notes
 

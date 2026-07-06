@@ -1,4 +1,4 @@
-package influxclient
+package influx
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (sc *stressClient) spinOffQueryPackage(p Package, serv int) {
+func (sc *client) spinOffQueryPackage(p Package, serv int) {
 	sc.Add(1)
 	sc.rc.Increment()
 	go func() {
@@ -21,7 +21,7 @@ func (sc *stressClient) spinOffQueryPackage(p Package, serv int) {
 }
 
 // Prepares to send the GET request
-func (sc *stressClient) prepareQuerySend(p Package, serv int) {
+func (sc *client) prepareQuerySend(p Package, serv int) {
 
 	var queryTemplate string
 	if sc.ssl {
@@ -40,7 +40,7 @@ func (sc *stressClient) prepareQuerySend(p Package, serv int) {
 }
 
 // Sends the GET request, reads it, and handles errors
-func (sc *stressClient) makeGet(addr, statementID string, tr *Tracer) {
+func (sc *client) makeGet(addr, statementID string, tr *Tracer) {
 
 	// Make GET request
 	t := time.Now()

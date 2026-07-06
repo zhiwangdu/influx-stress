@@ -1,7 +1,7 @@
-package influxclient
+package influx
 
-// Package is a struct to enable communication between InsertStatements, QueryStatements and InfluxQLStatements and the stressClient backend
-// Packages carry either writes or queries in the []byte that makes up the Body
+// Package enables runtime statements to send write or query payloads to the backend client.
+// Packages carry either writes or queries in Body.
 type Package struct {
 	T           Type
 	Body        []byte

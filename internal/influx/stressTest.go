@@ -1,4 +1,4 @@
-package influxclient
+package influx
 
 import (
 	"fmt"
@@ -35,7 +35,7 @@ func NewStressTest() *StressTest {
 	}
 
 	// Start the client service
-	startStressClient(packageCh, directiveCh, responseCh, s.TestID)
+	startClient(packageCh, directiveCh, responseCh, s.TestID)
 
 	// Listen for Results coming in
 	s.resultsListen()

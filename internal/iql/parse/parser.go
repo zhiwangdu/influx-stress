@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	statement "github.com/influxdata/influx-stress/internal/engine"
 	"github.com/influxdata/influx-stress/internal/workload"
 )
 
@@ -242,8 +241,8 @@ func NewParser(r io.Reader) *Parser {
 	return &Parser{s: NewScanner(r)}
 }
 
-// Parse returns a Statement
-func (p *Parser) Parse() (statement.Statement, error) {
+// Parse returns an IQL AST statement.
+func (p *Parser) Parse() (Statement, error) {
 	tok, lit := p.scanIgnoreWhitespace()
 
 	switch tok {
@@ -271,8 +270,8 @@ func (p *Parser) Parse() (statement.Statement, error) {
 }
 
 // ParseQueryStatement returns a QueryStatement
-func (p *Parser) ParseQueryStatement() (*statement.QueryStatement, error) {
-	stmt := &statement.QueryStatement{
+func (p *Parser) ParseQueryStatement() (*QueryStatement, error) {
+	stmt := &QueryStatement{
 		StatementID: RandStr(10),
 	}
 	if tok, lit := p.scanIgnoreWhitespace(); tok != QUERY {
@@ -315,10 +314,10 @@ func (p *Parser) ParseQueryStatement() (*statement.QueryStatement, error) {
 }
 
 // ParseInsertStatement returns a InsertStatement
-func (p *Parser) ParseInsertStatement() (*statement.InsertStatement, error) {
+func (p *Parser) ParseInsertStatement() (*InsertStatement, error) {
 
 	// Initialize the InsertStatement with a statementId
-	stmt := &statement.InsertStatement{
+	stmt := &InsertStatement{
 		StatementID: RandStr(10),
 	}
 
@@ -450,11 +449,11 @@ func (p *Parser) ParseTemplate() (*workload.Template, error) {
 }
 
 // ParseExecStatement returns a ExecStatement
-func (p *Parser) ParseExecStatement() (*statement.ExecStatement, error) {
+func (p *Parser) ParseExecStatement() (*ExecStatement, error) {
 	// NEEDS TO PARSE ACTUAL PATH TO SCRIPT CURRENTLY ONLY DOES
 	// IDENT SCRIPT NAMES
 
-	stmt := &statement.ExecStatement{
+	stmt := &ExecStatement{
 		StatementID: RandStr(10),
 	}
 
@@ -473,9 +472,9 @@ func (p *Parser) ParseExecStatement() (*statement.ExecStatement, error) {
 }
 
 // ParseSetStatement returns a SetStatement
-func (p *Parser) ParseSetStatement() (*statement.SetStatement, error) {
+func (p *Parser) ParseSetStatement() (*SetStatement, error) {
 
-	stmt := &statement.SetStatement{
+	stmt := &SetStatement{
 		StatementID: RandStr(10),
 	}
 
@@ -510,9 +509,9 @@ func (p *Parser) ParseSetStatement() (*statement.SetStatement, error) {
 }
 
 // ParseWaitStatement returns a WaitStatement
-func (p *Parser) ParseWaitStatement() (*statement.WaitStatement, error) {
+func (p *Parser) ParseWaitStatement() (*WaitStatement, error) {
 
-	stmt := &statement.WaitStatement{
+	stmt := &WaitStatement{
 		StatementID: RandStr(10),
 	}
 
@@ -524,16 +523,16 @@ func (p *Parser) ParseWaitStatement() (*statement.WaitStatement, error) {
 }
 
 // ParseGoStatement returns a GoStatement
-func (p *Parser) ParseGoStatement() (*statement.GoStatement, error) {
+func (p *Parser) ParseGoStatement() (*GoStatement, error) {
 
-	stmt := &statement.GoStatement{}
+	stmt := &GoStatement{}
 	stmt.StatementID = RandStr(10)
 
 	if tok, lit := p.scanIgnoreWhitespace(); tok != GO {
 		return nil, fmt.Errorf("Error parsing Go Statement\n  Expected: GO\n  Found: %v\n", lit)
 	}
 
-	var body statement.Statement
+	var body Statement
 	var err error
 
 	tok, _ := p.scanIgnoreWhitespace()
