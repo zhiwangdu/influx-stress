@@ -1,0 +1,32 @@
+# Repository Guidelines
+
+## Project Structure & Module Organization
+
+This repository is a standalone Go module for the InfluxDB `influx_stress` tool. The CLI entry point is in `cmd/influx_stress/`, with example TOML configuration in `cmd/influx_stress/examples/`. Core v1 stress-test logic, default configuration, and package tests live in `stress/`. The newer v2 implementation is under `stress/v2/`, including stress client code in `stress/v2/stress_client/`, statement execution in `stress/v2/statement/`, StressQL parsing in `stress/v2/stressql/`, and sample `.iql` files in `stress/v2/iql/`. Tests are colocated with source files as `*_test.go`.
+
+## Build, Test, and Development Commands
+
+- `go test ./...`: runs all package tests.
+- `go build ./...`: verifies all packages compile.
+- `go build -o /tmp/influx_stress ./cmd/influx_stress`: builds the CLI binary.
+- `/tmp/influx_stress`: runs the default stress test configuration at `stress/stress.toml`.
+- `/tmp/influx_stress -config path/to/config.toml`: runs a v1 TOML configuration.
+- `/tmp/influx_stress -v2 -config stress/v2/iql/default.iql`: runs a v2 IQL configuration.
+
+Use a local InfluxDB instance at `http://localhost:8086` when exercising the default runtime paths.
+
+## Coding Style & Naming Conventions
+
+Use standard Go formatting: run `gofmt` on changed `.go` files before committing. Keep package names short and lowercase, matching the existing style (`stress_client`, `statement`, `stressql`). Exported identifiers should have clear Go doc comments when they form part of a package API. Prefer explicit error handling and small helper functions over hidden global behavior.
+
+## Testing Guidelines
+
+Add or update colocated `*_test.go` files for parser, statement, client, and configuration changes. Follow existing table-driven test patterns where present, especially in `stress/v2/statement` and `stress/v2/stressql`. Run `go test ./...` before opening a pull request. For changes that require a live InfluxDB server, document the manual command and target configuration used.
+
+## Commit & Pull Request Guidelines
+
+This checkout does not include Git history, so use concise imperative commit messages such as `Add v2 query parser test` or `Fix stress client response handling`. Pull requests should include a short problem statement, a summary of code changes, test results, and any manual InfluxDB validation steps. Link related issues when available and include screenshots only for changes to visual assets such as `stress/v2/influx_stress_v2.png`.
+
+## Configuration & Safety Notes
+
+Stress-test configs can create, reset, and write large volumes of data. Review database names, addresses, concurrency, and reset flags before running against shared or production InfluxDB instances.
